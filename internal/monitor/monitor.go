@@ -145,7 +145,7 @@ func (m *Monitor) checkSite(ctx context.Context, site config.SiteConfig, states 
 		if prevStatus == StatusDown {
 			m.logger.Info("site still down", "site", site.Name)
 		} else {
-			m.notify(ctx, downMessage(site, result.Err, false))
+			m.notify(ctx, downMessage(site, result.Err, false, nil))
 			result.Notified = true
 			m.logger.Info("site down, notified", "site", site.Name)
 		}
@@ -184,7 +184,7 @@ func (m *Monitor) checkSite(ctx context.Context, site config.SiteConfig, states 
 		}
 	} else {
 		if prevStatus != StatusDown {
-			m.notify(ctx, downMessage(site, result.Err, true))
+			m.notify(ctx, downMessage(site, result.Err, true, restartErr))
 			result.Notified = true
 			m.logger.Info("site still down after restart, notified", "site", site.Name)
 		} else {
@@ -246,11 +246,19 @@ func (m *Monitor) notify(ctx context.Context, message string) {
 	}
 }
 
-func downMessage(site config.SiteConfig, errText string, afterRestart bool) string {
-	if afterRestart {
-		return fmt.Sprintf("🔴 %s is DOWN (restart attempted, still unreachable)\nURL: %s\nError: %s", site.Name, site.URL, errText)
+// downMessage builds the Signal notification text for a site that's down.
+// restartErr, when non-nil, is the error from a failed restart command
+// attempt and is appended so the operator knows the automated fix didn't
+// even run successfully, not just that the site is still unreachable.
+func downMessage(site config.SiteConfig, errText string, afterRestart bool, restartErr error) string {
+	if !afterRestart {
+		return fmt.Sprintf("🔴 %s is DOWN\nURL: %s\nError: %s", site.Name, site.URL, errText)
 	}
-	return fmt.Sprintf("🔴 %s is DOWN\nURL: %s\nError: %s", site.Name, site.URL, errText)
+	msg := fmt.Sprintf("🔴 %s is DOWN (restart attempted, still unreachable)\nURL: %s\nError: %s", site.Name, site.URL, errText)
+	if restartErr != nil {
+		msg += fmt.Sprintf("\nRestart command failed: %s", restartErr)
+	}
+	return msg
 }
 
 func recoveryMessage(site config.SiteConfig) string {

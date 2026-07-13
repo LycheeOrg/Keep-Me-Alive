@@ -8,6 +8,7 @@ state_db_path: "keep-me-alive.db"  # SQLite file for check history (read by -s)
 history_size: 50                # max recent checks retained per site
 
 signal:
+# The client is already applying a /v2/send path to the base URL, so it should not be included here.
   base_url: "http://signal-host:8080"
   username: "proxyuser"
   password: "proxypass"

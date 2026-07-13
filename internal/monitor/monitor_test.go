@@ -192,6 +192,23 @@ func TestMonitor_LocalDown_StaysDown_NotifiesOnce(t *testing.T) {
 	}
 }
 
+func TestMonitor_LocalDown_RestartCommandFails_NotificationIncludesReason(t *testing.T) {
+	dir := t.TempDir()
+	marker := filepath.Join(dir, "never-created")
+	srv := newMarkerServer(t, marker)
+	site := localSite("local-a", srv.URL, "exit 1", dir)
+	mon, notifier := newTestMonitor(t, []config.SiteConfig{site})
+
+	mon.checkSite(context.Background(), site, mon.states)
+
+	if got := notifier.count(); got != 1 {
+		t.Fatalf("notifications = %d, want 1", got)
+	}
+	if last := notifier.last(); !strings.Contains(last, "Restart command failed") {
+		t.Errorf("last message = %q, want it to mention the restart command failure", last)
+	}
+}
+
 func TestMonitor_LocalStillDownAcrossCycles_RestartRetriedOneNotification(t *testing.T) {
 	dir := t.TempDir()
 	marker := filepath.Join(dir, "never-created")
