@@ -1,0 +1,4 @@
+/keep-me-alive
+*.db
+*.db-shm
+*.db-wal

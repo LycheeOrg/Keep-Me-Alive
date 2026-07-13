@@ -1,0 +1,27 @@
+# Example keep-me-alive configuration.
+
+check_interval: 60s          # daemon-mode poll interval
+restart_recheck_delay: 15s   # wait after restarting a local site before rechecking it
+http_timeout: 10s            # per-request timeout for site checks and Signal calls
+
+state_db_path: "keep-me-alive.db"  # SQLite file for check history (read by -s)
+history_size: 50                # max recent checks retained per site
+
+signal:
+  base_url: "http://signal-host:8080"
+  username: "proxyuser"
+  password: "proxypass"
+  sender_number: "+15551234567"
+  recipients:
+    - "group.abcdef123456=="
+
+sites:
+  - name: "lychee"
+    type: local
+    url: "http://localhost:8081/api/health"
+    restart_command: "docker compose restart lychee"
+    working_dir: "/opt/lychee"
+
+  - name: "example-remote"
+    type: remote
+    url: "https://example.com/"
