@@ -232,7 +232,13 @@ func (m *Monitor) finish(ctx context.Context, site config.SiteConfig, state *Sit
 		Restarted: result.Restarted,
 		Notified:  result.Notified,
 	}
-	if err := m.store.Record(ctx, rec, m.cfg.HistorySize); err != nil {
+	// Persistence is a fast, local, best-effort write: use a context that's
+	// detached from ctx's cancellation (e.g. a shutdown signal mid-cycle)
+	// so the last known result still gets flushed instead of failing with
+	// "context canceled" right as the process exits.
+	persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	if err := m.store.Record(persistCtx, rec, m.cfg.HistorySize); err != nil {
 		m.logger.Error("failed to persist check result", "site", site.Name, "err", err)
 	}
 }

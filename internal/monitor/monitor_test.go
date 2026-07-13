@@ -259,6 +259,27 @@ func TestMonitor_LocalDownNotifiedThenRecovers_OneRecoveryNotification(t *testin
 	}
 }
 
+func TestMonitor_ContextCancelledDuringRestartWait_StillPersists(t *testing.T) {
+	dir := t.TempDir()
+	marker := filepath.Join(dir, "never-created")
+	srv := newMarkerServer(t, marker)
+	site := localSite("local-a", srv.URL, "true", dir)
+	mon, _ := newTestMonitor(t, []config.SiteConfig{site})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // simulate a shutdown signal arriving mid-cycle (e.g. Ctrl+C during the restart-recheck wait)
+
+	mon.checkSite(ctx, site, mon.states)
+
+	recent, err := mon.store.Recent(context.Background(), site.Name, 10)
+	if err != nil {
+		t.Fatalf("Recent() unexpected error: %v", err)
+	}
+	if len(recent) != 1 {
+		t.Fatalf("len(recent) = %d, want 1 (result should still be persisted despite ctx cancellation)", len(recent))
+	}
+}
+
 func TestMonitor_RunOnce_NoCrossCallState(t *testing.T) {
 	srv, _ := newToggleServer(t, false)
 	site := remoteSite("remote-a", srv.URL)
